@@ -25,7 +25,11 @@ async function balances() {
 }
 
 async function send(provider, label, value) {
-  const tx = await new Wallet(deployerKey, provider).sendTransaction({ to: relayerAddress, value: parseEther(value) });
+  const wallet = new Wallet(deployerKey, provider);
+  if ((await provider.getBalance(wallet.address)) < parseEther(value)) {
+    throw new Error(`${label} : solde du deployer insuffisant pour envoyer ${value} ETH (dépôt pas encore arrivé ?)`);
+  }
+  const tx = await wallet.sendTransaction({ to: relayerAddress, value: parseEther(value) });
   console.log(`${label} : ${value} ETH → relayer (${tx.hash})`);
   await tx.wait();
 }

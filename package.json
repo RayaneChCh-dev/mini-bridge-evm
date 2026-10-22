@@ -11,7 +11,8 @@
     "test:relayer": "hardhat compile --quiet && node --test relayer/test/*.test.js",
     "relayer": "node relayer/index.js",
     "relayer:status": "node relayer/index.js --status",
-    "balances": "node scripts/fund.js"
+    "balances": "node scripts/fund.js",
+    "bridge": "node scripts/bridge.js"
   },
   "license": "MIT",
   "type": "commonjs",
