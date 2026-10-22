@@ -1,7 +1,7 @@
 {
   "name": "mini-bridge-evm",
   "version": "1.0.0",
-  "description": "Mini-bridge mint & burn d'un ERC20 entre deux testnets EVM (Sepolia ↔ Base Sepolia)",
+  "description": "Mint & burn ERC20 bridge between two EVM testnets (Sepolia ↔ Base Sepolia)",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",

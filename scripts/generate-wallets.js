@@ -1,5 +1,5 @@
-// Génère les deux wallets dédiés du projet (deployer/owner et relayer) dans .env.
-// N'affiche jamais les clés privées, seulement les adresses à alimenter via les faucets.
+// Generates the project's two dedicated wallets (deployer/owner and relayer) into .env.
+// Never prints private keys, only the addresses to fund from faucets.
 const fs = require("fs");
 const path = require("path");
 const { Wallet } = require("ethers");
@@ -22,4 +22,4 @@ fs.writeFileSync(envPath, env, { mode: 0o600 });
 
 console.log("Deployer / owner :", deployer.address);
 console.log("Relayer          :", relayer.address);
-console.log("\nAlimente ces deux adresses en ETH de test sur Sepolia et Base Sepolia.");
+console.log("\nFund these two addresses with test ETH on Sepolia and Base Sepolia.");

@@ -5,20 +5,20 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title BridgeToken
-/// @notice ERC20 déployé à l'identique sur chaque chaîne du bridge.
-///         bridgeOut brûle sur la chaîne source, le relayer appelle bridgeIn
-///         sur la chaîne destination pour minter le même montant.
+/// @notice ERC20 deployed identically on every chain of the bridge.
+///         bridgeOut burns on the source chain; the relayer then calls bridgeIn
+///         on the destination chain to mint the same amount.
 contract BridgeToken is ERC20, Ownable {
-    /// @notice Seule adresse autorisée à appeler bridgeIn.
+    /// @notice The only address allowed to call bridgeIn.
     address public relayer;
 
-    /// @notice Compteur des opérations sortantes de cette chaîne.
+    /// @notice Counter of outbound operations from this chain.
     uint256 public outboundNonce;
 
-    /// @notice Chaînes avec lesquelles ce contrat accepte d'échanger.
+    /// @notice Chains this contract accepts to bridge with.
     mapping(uint256 chainId => bool) public supportedChains;
 
-    /// @notice Opérations entrantes déjà traitées, indexées par (sourceChainId, nonce).
+    /// @notice Inbound operations already processed, keyed by (sourceChainId, nonce).
     mapping(bytes32 opId => bool) public processed;
 
     event BridgedOut(
@@ -44,8 +44,8 @@ contract BridgeToken is ERC20, Ownable {
         _;
     }
 
-    /// @param initialRelayer adresse du relayer (distincte de l'owner)
-    /// @param initialSupply  supply mintée à l'owner au déploiement (0 sur les chaînes secondaires)
+    /// @param initialRelayer relayer address (distinct from the owner)
+    /// @param initialSupply  supply minted to the owner at deployment (0 on secondary chains)
     constructor(address initialRelayer, uint256 initialSupply)
         ERC20("Bridge Token", "BRT")
         Ownable(msg.sender)
@@ -54,7 +54,7 @@ contract BridgeToken is ERC20, Ownable {
         if (initialSupply > 0) _mint(msg.sender, initialSupply);
     }
 
-    /// @notice Brûle `amount` tokens de l'appelant pour les envoyer à `recipient` sur `destChainId`.
+    /// @notice Burns `amount` of the caller's tokens to send them to `recipient` on `destChainId`.
     function bridgeOut(uint256 amount, uint256 destChainId, address recipient) external returns (uint256 nonce) {
         if (amount == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
@@ -65,7 +65,7 @@ contract BridgeToken is ERC20, Ownable {
         emit BridgedOut(msg.sender, recipient, amount, block.chainid, destChainId, nonce);
     }
 
-    /// @notice Minte les tokens correspondant à un BridgedOut observé sur `sourceChainId`.
+    /// @notice Mints the tokens matching a BridgedOut observed on `sourceChainId`.
     function bridgeIn(address recipient, uint256 amount, uint256 sourceChainId, uint256 nonce) external onlyRelayer {
         if (!supportedChains[sourceChainId]) revert UnsupportedChain(sourceChainId);
         bytes32 id = operationId(sourceChainId, nonce);

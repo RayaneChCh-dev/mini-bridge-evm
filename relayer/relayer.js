@@ -2,25 +2,25 @@ const { Contract, Wallet } = require("ethers");
 const { abi } = require("../artifacts/contracts/BridgeToken.sol/BridgeToken.json");
 
 /**
- * Relayer mint & burn.
+ * Mint & burn relayer.
  *
- * À chaque tick, pour chaque chaîne :
- *  1. scan    : lit les events BridgedOut entre le curseur et (tête - confirmations) avec getLogs,
- *               les enregistre en base et avance le curseur dans la même transaction SQLite.
- *  2. process : pour chaque opération ouverte, vérifie isProcessed sur la chaîne destination
- *               puis appelle bridgeIn si nécessaire.
+ * On every tick, for every chain:
+ *  1. scan    : reads BridgedOut events between the cursor and (head - confirmations) with getLogs,
+ *               stores them and moves the cursor forward in the same SQLite transaction.
+ *  2. process : for every open operation, checks isProcessed on the destination chain,
+ *               then calls bridgeIn if needed.
  *
- * Le même code sert au suivi en direct et au rattrapage après un arrêt : le relayer reprend
- * toujours depuis le dernier bloc enregistré.
+ * The same code handles live tracking and catch-up after downtime: the relayer always
+ * resumes from the last recorded block.
  */
 class Relayer {
   /**
    * @param {object} opts
    * @param {Array<{name: string, chainId: number, provider: import("ethers").Provider, address: string, startBlock: number}>} opts.chains
-   * @param {string} opts.relayerKey   clé privée du relayer
+   * @param {string} opts.relayerKey   relayer private key
    * @param {ReturnType<import("./db").openDb>} opts.db
    * @param {number} [opts.confirmations]
-   * @param {number} [opts.maxBlockRange]  taille max d'une requête getLogs (sepolia.base.org la limite à 200 blocs)
+   * @param {number} [opts.maxBlockRange]  max size of a getLogs request (sepolia.base.org caps it at 200 blocks)
    * @param {number} [opts.maxAttempts]
    * @param {number} [opts.pollIntervalMs]
    * @param {{info: Function, warn: Function, error: Function}} [opts.logger]
@@ -47,12 +47,12 @@ class Relayer {
 
   async start() {
     this.running = true;
-    this.log.info(`Relayer démarré : ${[...this.chains.values()].map((c) => `${c.name} (${c.chainId})`).join(", ")}`);
+    this.log.info(`Relayer started: ${[...this.chains.values()].map((c) => `${c.name} (${c.chainId})`).join(", ")}`);
     while (this.running) {
       try {
         await this.tick();
       } catch (err) {
-        this.log.error(`Erreur pendant le tick : ${describe(err)}`);
+        this.log.error(`Error during tick: ${describe(err)}`);
       }
       if (this.running) await new Promise((r) => (this.timer = setTimeout(r, this.pollIntervalMs)));
     }
@@ -68,7 +68,7 @@ class Relayer {
     await this.processOpen();
   }
 
-  /** Enregistre les BridgedOut confirmés de `chain` depuis le dernier bloc traité. */
+  /** Records the confirmed BridgedOut events of `chain` since the last processed block. */
   async scan(chain) {
     const head = await chain.provider.getBlockNumber();
     const safeBlock = head - this.confirmations;
@@ -89,13 +89,13 @@ class Relayer {
       }));
       this.db.recordRange(chain.chainId, to, ops);
       for (const op of ops) {
-        this.log.info(`[${chain.name}] BridgedOut nonce=${op.nonce} ${op.amount} → ${op.recipient} (chaîne ${op.destChainId})`);
+        this.log.info(`[${chain.name}] BridgedOut nonce=${op.nonce} ${op.amount} → ${op.recipient} (chain ${op.destChainId})`);
       }
       from = to + 1;
     }
   }
 
-  /** Tente de finaliser toutes les opérations en attente ou soumises. */
+  /** Tries to finalize every pending or submitted operation. */
   async processOpen() {
     for (const op of this.db.openOps()) await this.processOne(op);
   }
@@ -104,43 +104,43 @@ class Relayer {
     const tag = `op ${op.source_chain_id}/${op.nonce}`;
     const dest = this.chains.get(op.dest_chain_id);
     if (!dest) {
-      this.db.updateOp(op, { status: "failed", lastError: `chaîne destination ${op.dest_chain_id} non configurée` });
-      this.log.error(`${tag} : chaîne destination ${op.dest_chain_id} non configurée`);
+      this.db.updateOp(op, { status: "failed", lastError: `destination chain ${op.dest_chain_id} not configured` });
+      this.log.error(`${tag}: destination chain ${op.dest_chain_id} not configured`);
       return;
     }
 
     try {
-      // Reprise après crash : le mint a peut-être déjà eu lieu sans que la base ait été mise à jour.
+      // Crash recovery: the mint may already have happened without the database being updated.
       if (await dest.reader.isProcessed(op.source_chain_id, op.nonce)) {
         this.db.updateOp(op, { status: "confirmed" });
-        this.log.info(`${tag} : déjà mintée sur ${dest.name}, marquée confirmée`);
+        this.log.info(`${tag}: already minted on ${dest.name}, marked confirmed`);
         return;
       }
 
       const tx = await dest.writer.bridgeIn(op.recipient, op.amount, op.source_chain_id, op.nonce);
       this.db.updateOp(op, { status: "submitted", mintTxHash: tx.hash, attempts: op.attempts + 1 });
-      this.log.info(`${tag} : bridgeIn envoyé sur ${dest.name} (${tx.hash})`);
+      this.log.info(`${tag}: bridgeIn sent on ${dest.name} (${tx.hash})`);
 
       const receipt = await tx.wait();
-      if (receipt.status !== 1) throw new Error(`transaction ${tx.hash} revert`);
+      if (receipt.status !== 1) throw new Error(`transaction ${tx.hash} reverted`);
       this.db.updateOp(op, { status: "confirmed", mintTxHash: tx.hash, attempts: op.attempts + 1 });
-      this.log.info(`${tag} : mint confirmé sur ${dest.name} (bloc ${receipt.blockNumber})`);
+      this.log.info(`${tag}: mint confirmed on ${dest.name} (block ${receipt.blockNumber})`);
     } catch (err) {
       if (isAlreadyProcessed(err, dest.reader)) {
         this.db.updateOp(op, { status: "confirmed" });
-        this.log.info(`${tag} : AlreadyProcessed, déjà mintée — marquée confirmée`);
+        this.log.info(`${tag}: AlreadyProcessed, already minted — marked confirmed`);
         return;
       }
       const attempts = op.attempts + 1;
       const status = attempts >= this.maxAttempts ? "failed" : "pending";
       const message = describe(err);
       this.db.updateOp(op, { status, attempts, lastError: message });
-      this.log.warn(`${tag} : échec (tentative ${attempts}/${this.maxAttempts}) : ${message}`);
+      this.log.warn(`${tag}: failed (attempt ${attempts}/${this.maxAttempts}): ${message}`);
     }
   }
 }
 
-/** Message d'erreur lisible : les RPC cachent souvent la vraie cause dans le corps de la réponse. */
+/** Readable error message: RPCs often hide the real cause in the response body. */
 function describe(err) {
   const body = err?.info?.responseBody;
   if (body) {
@@ -148,7 +148,7 @@ function describe(err) {
       const rpcMessage = JSON.parse(body).error?.message;
       if (rpcMessage) return `${err.shortMessage} (${rpcMessage})`;
     } catch {
-      /* corps non JSON */
+      /* non-JSON body */
     }
   }
   return err?.shortMessage || err?.message || String(err);
@@ -160,7 +160,7 @@ function isAlreadyProcessed(err, contract) {
     try {
       return contract.interface.parseError(data)?.name === "AlreadyProcessed";
     } catch {
-      /* données de revert non décodables */
+      /* undecodable revert data */
     }
   }
   return err?.revert?.name === "AlreadyProcessed";

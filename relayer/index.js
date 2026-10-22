@@ -1,6 +1,6 @@
-// Point d'entrée : lance le relayer entre les chaînes déployées (deployments/*.json).
-// Usage : npm run relayer            (toutes les chaînes déployées)
-//         node relayer/index.js --status   (affiche l'historique des opérations)
+// Entry point: runs the relayer between the deployed chains (deployments/*.json).
+// Usage: npm run relayer                   (all deployed chains)
+//        node relayer/index.js --status    (prints the operation history)
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
@@ -22,18 +22,18 @@ if (process.argv.includes("--status")) {
       source: o.source_chain_id,
       nonce: o.nonce,
       dest: o.dest_chain_id,
-      destinataire: o.recipient,
-      montant: o.amount,
-      statut: o.status,
-      essais: o.attempts,
+      recipient: o.recipient,
+      amount: o.amount,
+      status: o.status,
+      attempts: o.attempts,
       mint_tx: o.mint_tx_hash,
-      erreur: o.last_error,
+      error: o.last_error,
     }))
   );
   process.exit(0);
 }
 
-if (!process.env.RELAYER_PRIVATE_KEY) throw new Error("RELAYER_PRIVATE_KEY manquant dans .env");
+if (!process.env.RELAYER_PRIVATE_KEY) throw new Error("RELAYER_PRIVATE_KEY missing from .env");
 
 const deploymentsDir = path.join(__dirname, "..", "deployments");
 const chains = fs
@@ -42,18 +42,18 @@ const chains = fs
   .map((f) => JSON.parse(fs.readFileSync(path.join(deploymentsDir, f), "utf8")))
   .map((d) => {
     const url = RPC_URLS[d.network];
-    if (!url) throw new Error(`Pas d'URL RPC pour le réseau ${d.network}`);
+    if (!url) throw new Error(`No RPC URL for network ${d.network}`);
     return {
       name: d.network,
       chainId: d.chainId,
       address: d.address,
       startBlock: d.deployBlock,
-      // cacheTimeout: -1 désactive le cache de requêtes d'ethers (250 ms par défaut), qui peut
-      // renvoyer un nonce de compte périmé quand deux bridgeIn s'enchaînent.
+      // cacheTimeout: -1 disables ethers' request cache (250 ms by default), which can
+      // return a stale account nonce when two bridgeIn calls follow each other.
       provider: new JsonRpcProvider(url, Network.from(d.chainId), { staticNetwork: true, cacheTimeout: -1 }),
     };
   });
-if (chains.length < 2) throw new Error("Il faut au moins deux déploiements dans deployments/ (lance les scripts deploy:*)");
+if (chains.length < 2) throw new Error("At least two deployments are needed in deployments/ (run the deploy:* scripts)");
 
 const relayer = new Relayer({
   chains,
@@ -66,7 +66,7 @@ const relayer = new Relayer({
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => {
-    console.log("Arrêt du relayer…");
+    console.log("Stopping relayer…");
     relayer.stop();
   });
 }

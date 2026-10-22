@@ -1,168 +1,168 @@
-# Mini-Bridge EVM : Bridge Mint & Burn entre deux testnets
+# Mini-Bridge EVM: Mint & Burn Bridge Between Two Testnets
 
-22 octobre 2026 · Rayane Achouchi
+October 22, 2026 · Rayane Achouchi
 
-Ce projet personnel consiste à construire un **mini-bridge mint & burn** entre deux blockchains EVM publiques (testnets), permettant de transférer un token ERC20 de l'une à l'autre. L'objectif est double : acquérir une compréhension pratique des mécanismes de pont inter-chaînes (un sujet central dans l'industrie crypto/entreprise), et produire une démonstration concrète et vérifiable à présenter en entretien.
+This personal project builds a **mint & burn mini-bridge** between two public EVM blockchains (testnets), allowing an ERC20 token to move from one to the other. It has two goals: gaining hands-on understanding of cross-chain bridge mechanics (a central topic in the crypto/enterprise industry), and producing a concrete, verifiable demo to present in interviews.
 
-## 1. Contexte et objectifs
+## 1. Context and goals
 
-L'idée vient d'un échange avec un ami travaillant dans une BU Crypto & Blockchain, qui m'a partagé un exemple de mission confiée en interne : construire un bridge entre une blockchain privée d'entreprise (EVM, nodes Besu) et un testnet Ethereum public, pour faire transiter un stablecoin ERC20 entre les deux via un mécanisme mint & burn.
+The idea came from a conversation with a friend working in a Crypto & Blockchain business unit, who shared an example of an internal task: building a bridge between a private enterprise blockchain (EVM, Besu nodes) and a public Ethereum testnet, to move an ERC20 stablecoin between the two through a mint & burn mechanism.
 
-N'ayant pas accès à l'infrastructure privée de l'entreprise, ce projet reproduit le même problème technique sur deux testnets EVM publics et gratuits, dans le but de :
+Without access to the company's private infrastructure, this project reproduces the same technical problem on two free public EVM testnets, in order to:
 
-- Comprendre concrètement comment deux blockchains qui ne communiquent pas nativement peuvent échanger de la valeur
-- Monter en compétence sur Solidity, les standards ERC20, et les patterns de bridge
-- Produire un projet démontrable (repo + démo) pour un entretien dans le secteur crypto/blockchain
+- Understand concretely how two blockchains that do not communicate natively can exchange value
+- Build skills in Solidity, the ERC20 standard, and bridge patterns
+- Produce a demonstrable project (repo + demo) for interviews in the crypto/blockchain sector
 
-Expérience préalable mobilisée : lancement d'un token sur Solana (memecoin), bots Telegram lisant des transactions on-chain via Helius, notions de testnet/devnet/mainnet acquises lors d'un hackathon sur Aleo.
+Prior experience drawn on: launching a token on Solana (memecoin), Telegram bots reading on-chain transactions through Helius, and testnet/devnet/mainnet concepts learned during a hackathon on Aleo.
 
-## 2. Périmètre
+## 2. Scope
 
-**Inclus**
+**In scope**
 
-- Déploiement d'un contrat ERC20 avec mint/burn sur deux testnets EVM
-- Service relayer off-chain qui écoute les events de burn et déclenche le mint sur l'autre chaîne
-- Protection anti-rejeu (identifiant `(chaîne source, nonce)`) et attente de confirmations de blocs
-- Petit historique local des opérations de bridge (statut en attente / confirmé / échoué)
-- Démo vérifiable (transactions visibles sur les explorateurs publics)
+- Deploying an ERC20 contract with mint/burn on two EVM testnets
+- An off-chain relayer service that listens for burn events and triggers the mint on the other chain
+- Replay protection (`(source chain, nonce)` identifier) and waiting for block confirmations
+- A small local history of bridge operations (pending / confirmed / failed status)
+- A verifiable demo (transactions visible on public block explorers)
 
-**Hors périmètre**
+**Out of scope**
 
-- Bridge multi-signature ou décentralisé (un seul relayer, pas de réseau de validateurs)
-- Interface utilisateur poussée (un CLI ou une page minimale suffit)
-- Audit de sécurité formel du contrat
-- Déploiement en production / mainnet
+- A multi-signature or decentralized bridge (a single relayer, no validator network)
+- An elaborate user interface (a CLI or a minimal page is enough)
+- A formal security audit of the contract
+- Production / mainnet deployment
 
-## 3. Architecture générale
+## 3. Overall architecture
 
-Le pattern retenu est **mint & burn** : les tokens sont brûlés sur la chaîne source et un montant équivalent est minté sur la chaîne destination. Un seul composant off-chain, le **relayer**, fait le lien entre les deux chaînes.
+The chosen pattern is **mint & burn**: tokens are burned on the source chain and an equivalent amount is minted on the destination chain. A single off-chain component, the **relayer**, links the two chains.
 
 ```mermaid
 flowchart LR
-  U["Utilisateur<br/>bridgeOut(amount, destChainId, recipient)<br/>sur Chaîne A"] --> A["Contrat Chaîne A<br/>burn + emit BridgedOut"]
-  A --> R["Relayer<br/>détecte + attend N confirmations"]
-  R --> R2["Relayer appelle<br/>bridgeIn sur Chaîne B"]
-  R2 --> B["Contrat Chaîne B<br/>vérifie (chaîne source, nonce) + mint"]
+  U["User<br/>bridgeOut(amount, destChainId, recipient)<br/>on Chain A"] --> A["Chain A contract<br/>burn + emit BridgedOut"]
+  A --> R["Relayer<br/>detects + waits for N confirmations"]
+  R --> R2["Relayer calls<br/>bridgeIn on Chain B"]
+  R2 --> B["Chain B contract<br/>checks (source chain, nonce) + mint"]
 ```
 
-Points clés de cette architecture :
+Key points of this architecture:
 
-- Le relayer est le **seul** composant à détenir une clé ayant le droit de mint (voir section 6)
-- Chaque opération est identifiée par le couple **(chainId source, nonce)** : le nonce est un compteur propre à chaque chaîne source, et le couple reste unique même si l'on ajoute d'autres chaînes. Le contrat destination refuse tout couple déjà traité (anti-rejeu)
-- L'utilisateur choisit explicitement la **chaîne de destination** et le **destinataire** ; le contrat refuse une chaîne de destination non déclarée, pour éviter de brûler des tokens vers une chaîne qu'aucun relayer ne sert
-- Le relayer attend un nombre de confirmations de blocs avant d'agir, pour éviter de réagir à un event qui serait annulé par une réorganisation de chaîne
-- L'opération n'est pas parfaitement atomique : si le relayer échoue entre la détection et le mint, il doit pouvoir reprendre sans dupliquer (sections 5 et 11)
+- The relayer is the **only** component holding a key allowed to mint (see section 6)
+- Each operation is identified by the **(source chainId, nonce)** pair: the nonce is a counter specific to each source chain, and the pair stays unique even if more chains are added. The destination contract rejects any pair already processed (replay protection)
+- The user explicitly chooses the **destination chain** and the **recipient**; the contract rejects an undeclared destination chain, to avoid burning tokens towards a chain no relayer serves
+- The relayer waits for a number of block confirmations before acting, to avoid reacting to an event that a chain reorganization could undo
+- The operation is not perfectly atomic: if the relayer fails between detection and mint, it must be able to resume without duplicating (sections 5 and 11)
 
-## 4. Smart contract : BridgeToken
+## 4. Smart contract: BridgeToken
 
-Un seul contrat `BridgeToken.sol`, déployé à l'identique sur les deux chaînes. Standard **ERC20** (via OpenZeppelin) étendu avec :
+A single `BridgeToken.sol` contract, deployed identically on both chains. Standard **ERC20** (via OpenZeppelin) extended with:
 
-| Fonction | Rôle | Accès |
+| Function | Role | Access |
 | --- | --- | --- |
-| `bridgeOut(uint256 amount, uint256 destChainId, address recipient)` | Brûle les tokens de l'appelant, émet `BridgedOut(sender, recipient, amount, sourceChainId, destChainId, nonce)` | Public |
-| `bridgeIn(address recipient, uint256 amount, uint256 sourceChainId, uint256 nonce)` | Minte vers `recipient` après avoir vérifié que `(sourceChainId, nonce)` n'a pas déjà été traité | Réservé au relayer (`onlyRelayer`) |
-| `isProcessed(uint256 sourceChainId, uint256 nonce)` | Indique si une opération a déjà été mintée (utilisé par le relayer à la reprise) | Lecture publique |
-| `setRelayer(address newRelayer)` | Change l'adresse autorisée à appeler `bridgeIn` | Réservé à l'owner |
-| `setSupportedChain(uint256 chainId, bool supported)` | Déclare les chaînes avec lesquelles le contrat échange | Réservé à l'owner |
+| `bridgeOut(uint256 amount, uint256 destChainId, address recipient)` | Burns the caller's tokens, emits `BridgedOut(sender, recipient, amount, sourceChainId, destChainId, nonce)` | Public |
+| `bridgeIn(address recipient, uint256 amount, uint256 sourceChainId, uint256 nonce)` | Mints to `recipient` after checking that `(sourceChainId, nonce)` has not already been processed | Relayer only (`onlyRelayer`) |
+| `isProcessed(uint256 sourceChainId, uint256 nonce)` | Tells whether an operation has already been minted (used by the relayer on recovery) | Public view |
+| `setRelayer(address newRelayer)` | Changes the address allowed to call `bridgeIn` | Owner only |
+| `setSupportedChain(uint256 chainId, bool supported)` | Declares the chains the contract bridges with | Owner only |
 
-Le mapping `processed[keccak256(sourceChainId, nonce)]` garde trace des opérations déjà traitées pour empêcher tout rejeu. La supply initiale n'est mintée que sur la chaîne d'origine ; sur l'autre chaîne, les tokens n'existent que via `bridgeIn`.
+The `processed[keccak256(sourceChainId, nonce)]` mapping tracks operations already processed to prevent any replay. The initial supply is minted only on the origin chain; on the other chain, tokens only exist through `bridgeIn`.
 
-Tests unitaires Hardhat/Chai : mint/burn normal, tentative de rejeu d'un même `(chaîne, nonce)`, même nonce venant de deux chaînes différentes (doit passer), appel de `bridgeIn` par une adresse non autorisée — owner compris (doit échouer), chaîne non supportée, changement de relayer.
+Hardhat/Chai unit tests: normal mint/burn, replay attempt of the same `(chain, nonce)`, same nonce coming from two different chains (must pass), `bridgeIn` called by an unauthorized address — owner included (must fail), unsupported chain, relayer change.
 
-## 5. Service relayer (off-chain)
+## 5. Relayer service (off-chain)
 
-Service Node.js (`ethers.js`) tournant en continu, avec quatre responsabilités :
+A Node.js service (`ethers.js`) running continuously, with four responsibilities:
 
-1. **Écoute** : polling régulier (`getLogs`) des events `BridgedOut` sur chaque chaîne, par plages de blocs limitées (les RPC publics plafonnent la taille des requêtes). Le polling a été préféré à une souscription WebSocket : les RPC publics gratuits ne proposent pas toujours de WebSocket, et un seul chemin de code sert à la fois au suivi en direct et au rattrapage
-2. **Rattrapage** : le relayer enregistre en base le **dernier bloc traité** pour chaque chaîne, dans la même transaction SQLite que les opérations lues. Au redémarrage, il reprend depuis ce point et récupère les events émis pendant qu'il était arrêté
-3. **Confirmation** : seuls les blocs ayant au moins N confirmations (ex. 5-10) sont lus, si bien qu'un event n'est jamais traité avant d'être considéré comme définitif
-4. **Action** : appel de `bridgeIn` sur la chaîne destination avec la clé du relayer, puis mise à jour du statut en base locale
+1. **Listening**: regular polling (`getLogs`) of `BridgedOut` events on each chain, in limited block ranges (public RPCs cap the request size). Polling was preferred over a WebSocket subscription: free public RPCs do not always offer WebSockets, and a single code path handles both live tracking and catch-up
+2. **Catch-up**: the relayer stores the **last processed block** for each chain in its database, in the same SQLite transaction as the operations it read. On restart, it resumes from that point and recovers the events emitted while it was down
+3. **Confirmation**: only blocks with at least N confirmations (e.g. 5-10) are read, so an event is never processed before it is considered final
+4. **Action**: calls `bridgeIn` on the destination chain with the relayer key, then updates the status in the local database
 
-État persisté dans une base SQLite :
+State persisted in a SQLite database:
 
-- table `bridge_operations` : clé primaire `(source_chain_id, nonce)`, chaîne destination, destinataire, montant, statut, hash de la transaction source, hash de la transaction de mint
-- table `cursors` : dernier bloc traité par chaîne
+- `bridge_operations` table: primary key `(source_chain_id, nonce)`, destination chain, recipient, amount, status, source transaction hash, mint transaction hash
+- `cursors` table: last processed block per chain
 
-Au démarrage, le service reprend les opérations restées « en attente ». Avant de renvoyer un mint, il vérifie `isProcessed(sourceChainId, nonce)` sur la chaîne destination : si le relayer a planté **après** l'envoi du mint mais **avant** la mise à jour de la base, l'opération est déjà mintée et doit simplement être passée en « confirmé ». De même, un revert `AlreadyProcessed` est traité comme un succès, pas comme une erreur.
+On startup, the service resumes the operations left "pending". Before resending a mint, it checks `isProcessed(sourceChainId, nonce)` on the destination chain: if the relayer crashed **after** sending the mint but **before** updating the database, the operation is already minted and simply needs to be marked "confirmed". Likewise, an `AlreadyProcessed` revert is treated as a success, not as an error.
 
-## 6. Sécurité et gestion des clés
+## 6. Security and key management
 
-Le point le plus sensible du projet : la clé du relayer a le droit de mint sur la chaîne destination. Si elle fuite, un attaquant peut minter des tokens à l'infini.
+The most sensitive point of the project: the relayer key has the right to mint on the destination chain. If it leaks, an attacker can mint tokens without limit.
 
-**Mesures retenues pour ce projet de démo :**
+**Measures adopted for this demo project:**
 
-- Clé dédiée au relayer, distincte de l'owner/admin du contrat (séparation des privilèges) ; l'owner lui-même ne peut pas appeler `bridgeIn`
-- Stockée en variable d'environnement locale (`.env`, jamais commité, permissions `600`), pas de wallet personnel
-- Le contrat limite cette clé à la seule fonction `bridgeIn` (pas de droit d'administration) ; l'owner peut la révoquer via `setRelayer`
+- A key dedicated to the relayer, separate from the contract owner/admin (separation of privileges); the owner itself cannot call `bridgeIn`
+- Stored in a local environment variable (`.env`, never committed, `600` permissions), not a personal wallet
+- The contract restricts this key to the `bridgeIn` function only (no admin rights); the owner can revoke it through `setRelayer`
 
-**Limites assumées (à documenter explicitement, pas à cacher) :**
+**Accepted limitations (to be documented explicitly, not hidden):**
 
-- Pas de HSM ni de solution de garde multi-signature (hors périmètre d'un projet de démo gratuit)
-- Pas de plafond de mint par période (rate limit) : ce serait la première protection à ajouter contre une clé compromise
-- Le relayer est un point de défaillance et de confiance unique
-- Ces limites seraient à traiter en priorité avant tout passage en production réelle
+- No HSM or multi-signature custody (out of scope for a free demo project)
+- No per-period mint cap (rate limit): this would be the first protection to add against a compromised key
+- The relayer is a single point of failure and trust
+- These limitations would be the top priority before any real production use
 
 ## 7. Infrastructure
 
-**Chaînes retenues** : **Sepolia** (testnet Ethereum, chainId 11155111) et **Base Sepolia** (chainId 84532).
+**Chosen chains**: **Sepolia** (Ethereum testnet, chainId 11155111) and **Base Sepolia** (chainId 84532).
 
-**Accès RPC** : endpoints publics gratuits (RPC publics communautaires, ou Infura/Alchemy en offre gratuite), sans engagement ni contrat — le projet a un budget nul.
+**RPC access**: free public endpoints (community public RPCs, or Infura/Alchemy free tier), with no commitment or contract — the project has a zero budget.
 
-**Comptes de test** : deux wallets dédiés générés pour le projet (owner/deployer et relayer), jamais un wallet personnel, financés via les faucets publics de chaque testnet.
+**Test accounts**: two wallets generated for the project (owner/deployer and relayer), never a personal wallet, funded through each testnet's public faucets.
 
-**Hébergement du relayer** : exécution locale pendant le développement et la démo ; pas besoin d'hébergement permanent pour ce projet non productif.
+**Relayer hosting**: runs locally during development and the demo; no permanent hosting needed for this non-production project.
 
-## 8. Stack technique
+## 8. Tech stack
 
-| Brique | Outil |
+| Component | Tool |
 | --- | --- |
 | Smart contracts | Solidity 0.8.24 + OpenZeppelin 5 (ERC20, Ownable) |
-| Framework de dev | Hardhat |
+| Development framework | Hardhat |
 | Relayer | Node.js + ethers.js v6 |
-| Base locale du relayer | SQLite |
-| Tests | Hardhat/Chai (contrats) ; test d'intégration du relayer sur deux nœuds Hardhat locaux avec des chainIds différents |
-| Wallets | Wallets dédiés générés par script (importables dans MetaMask) |
-| Explorateurs | Etherscan Sepolia, BaseScan Sepolia |
-| Versioning | Git / GitHub (repo public) |
+| Relayer local database | SQLite |
+| Tests | Hardhat/Chai (contracts); relayer integration test on two local Hardhat nodes with different chainIds |
+| Wallets | Dedicated wallets generated by script (importable into MetaMask) |
+| Block explorers | Etherscan Sepolia, BaseScan Sepolia |
+| Versioning | Git / GitHub (public repo) |
 
-## 9. Plan de livraison et jalons
+## 9. Delivery plan and milestones
 
-Environ 8 à 12 sessions de travail (~2-3 h chacune), étalées sur 2 à 3 semaines en parallèle de l'alternance.
+About 8 to 12 work sessions (~2-3 h each), spread over 2 to 3 weeks alongside a work-study program.
 
-| Étape | Contenu | Sessions estimées |
+| Step | Content | Estimated sessions |
 | --- | --- | --- |
-| 1. Setup | Repo, Hardhat, wallets de test, faucets des deux testnets | 1 |
-| 2. Smart contract | Écriture de BridgeToken (mint/burn/contrôle d'accès), tests, déploiement sur les deux chaînes | 2-3 |
-| 3. Relayer v1 | Écoute des events, confirmations de blocs, appel du mint (version simple) | 2-3 |
-| 4. Robustesse | Persistance SQLite, rattrapage des blocs manqués, reprise sans double mint, retry, test d'intégration | 1-2 |
-| 5. Démo & doc | README avec schéma, vidéo de démo, section limites | 1 |
+| 1. Setup | Repo, Hardhat, test wallets, faucets for both testnets | 1 |
+| 2. Smart contract | Writing BridgeToken (mint/burn/access control), tests, deployment on both chains | 2-3 |
+| 3. Relayer v1 | Event listening, block confirmations, mint call (simple version) | 2-3 |
+| 4. Robustness | SQLite persistence, catch-up on missed blocks, recovery without double mint, retry, integration test | 1-2 |
+| 5. Demo & docs | README with diagram, demo video, limitations section | 1 |
 
-## 10. Livrables attendus
+## 10. Expected deliverables
 
-- **Repo GitHub** public avec le contrat `BridgeToken.sol`, le service relayer, les tests, et un README servant de document d'architecture (structure, choix techniques, instructions de lancement)
-- **Schéma du flux** (voir section 3), intégré au README
-- **Démo filmée** (30-60 s) d'un bridge réussi entre les deux testnets, avec les transactions visibles sur les explorateurs publics
-- **Section « Limites & améliorations possibles »** dans le README (voir section 11)
+- A public **GitHub repo** with the `BridgeToken.sol` contract, the relayer service, the tests, and a README serving as the architecture document (structure, technical choices, run instructions)
+- A **flow diagram** (see section 3), included in the README
+- A **demo video** (30-60 s) of a successful bridge between the two testnets, with transactions visible on public block explorers
+- A **"Limitations and possible improvements"** section in the README (see section 11)
 
-## 11. Risques et limites connues
+## 11. Risks and known limitations
 
-| Risque | Impact | Atténuation dans ce projet |
+| Risk | Impact | Mitigation in this project |
 | --- | --- | --- |
-| Clé du relayer compromise | Mint illimité sur la chaîne destination | Clé dédiée, droits limités à `bridgeIn`, jamais commitée, révocable par l'owner |
-| Crash du relayer entre burn et mint | L'utilisateur a brûlé ses tokens sans rien recevoir | Persistance SQLite + reprise automatique au démarrage |
-| Crash du relayer après l'envoi du mint, avant la mise à jour de la base | Tentative de double mint à la reprise | Vérification `isProcessed` avant renvoi ; revert `AlreadyProcessed` traité comme un succès |
-| Events émis pendant un arrêt du relayer | Burn jamais relayé | Curseur du dernier bloc traité + rattrapage par `getLogs` au démarrage |
-| Reorg de blocs sur la chaîne source | Mint déclenché sur un event finalement annulé | Attente de N confirmations avant action |
-| Double traitement d'un même event | Double mint | Identifiant `(chaîne source, nonce)` + mapping `processed` on-chain |
-| Burn vers une chaîne non servie | Tokens perdus | `bridgeOut` refuse les chaînes non déclarées via `setSupportedChain` |
-| Relayer centralisé | Point de défaillance et de confiance unique | Assumé et documenté comme limite (hors périmètre d'un bridge multi-signature) |
+| Relayer key compromised | Unlimited mint on the destination chain | Dedicated key, rights limited to `bridgeIn`, never committed, revocable by the owner |
+| Relayer crash between burn and mint | User burned tokens and received nothing | SQLite persistence + automatic recovery on startup |
+| Relayer crash after sending the mint, before updating the database | Double mint attempt on recovery | `isProcessed` check before resending; `AlreadyProcessed` revert treated as success |
+| Events emitted while the relayer is down | Burn never relayed | Last-processed-block cursor + `getLogs` catch-up on startup |
+| Block reorg on the source chain | Mint triggered by an event that was eventually undone | Wait for N confirmations before acting |
+| Same event processed twice | Double mint | `(source chain, nonce)` identifier + on-chain `processed` mapping |
+| Burn towards a chain no relayer serves | Tokens lost | `bridgeOut` rejects chains not declared through `setSupportedChain` |
+| Centralized relayer | Single point of failure and trust | Accepted and documented as a limitation (multi-signature bridge out of scope) |
 
-Ce projet est une démonstration pédagogique, pas une solution prête pour la production : pas d'audit de sécurité formel, pas de garde multi-signature, pas de plafond de mint, un seul relayer sans redondance.
+This project is an educational demo, not a production-ready solution: no formal security audit, no multi-signature custody, no mint cap, a single relayer with no redundancy.
 
-## 12. Critères de succès
+## 12. Success criteria
 
-- Un transfert de tokens de la chaîne A vers la chaîne B fonctionne de bout en bout, vérifiable sur les deux explorateurs publics
-- Une tentative de rejeu d'une même opération est bien rejetée
-- Le relayer reprend correctement après un arrêt/redémarrage, sans double mint et sans oublier les burns survenus pendant l'arrêt
-- Le repo et le README sont assez clairs pour qu'une personne extérieure comprenne l'architecture sans explication orale
-- Le projet est présentable en entretien avec une démo courte et un discours assumé sur ses limites
+- A token transfer from chain A to chain B works end to end, verifiable on both public block explorers
+- An attempt to replay the same operation is rejected
+- The relayer recovers correctly after a stop/restart, without double minting and without missing burns made during downtime
+- The repo and README are clear enough for an outsider to understand the architecture without verbal explanation
+- The project can be presented in an interview with a short demo and a candid discussion of its limitations

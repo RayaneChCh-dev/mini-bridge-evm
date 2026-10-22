@@ -11,7 +11,7 @@ module.exports = {
     settings: { optimizer: { enabled: true, runs: 200 } },
   },
   networks: {
-    // HARDHAT_CHAIN_ID permet de lancer deux nœuds locaux simulant deux chaînes (test d'intégration du relayer)
+    // HARDHAT_CHAIN_ID lets us start two local nodes simulating two chains (relayer integration test)
     hardhat: { chainId: Number(process.env.HARDHAT_CHAIN_ID || 31337) },
     sepolia: {
       url: SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",

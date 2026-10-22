@@ -1,13 +1,13 @@
-// Répartit l'ETH de test du deployer. N'affiche jamais les clés.
-//   node scripts/fund.js sepolia : 0.01 ETH → relayer sur Sepolia, puis dépôt de 0.02 ETH vers Base Sepolia
-//                                  via le bridge officiel de Base (arrive sur la même adresse en quelques minutes)
-//   node scripts/fund.js base    : 0.008 ETH → relayer sur Base Sepolia
-//   node scripts/fund.js         : affiche seulement les soldes
+// Splits the deployer's test ETH. Never prints keys.
+//   node scripts/fund.js sepolia : 0.01 ETH → relayer on Sepolia, then a 0.02 ETH deposit to Base Sepolia
+//                                  through Base's official bridge (arrives at the same address within minutes)
+//   node scripts/fund.js base    : 0.008 ETH → relayer on Base Sepolia
+//   node scripts/fund.js         : prints balances only
 require("dotenv").config();
 const { JsonRpcProvider, Wallet, Contract, parseEther, formatEther } = require("ethers");
 
-// L1StandardBridge de Base Sepolia, déployé sur Sepolia. Vérifié on-chain :
-// OTHER_BRIDGE() du L2StandardBridge (0x4200…0010) sur Base Sepolia renvoie cette adresse, et inversement.
+// Base Sepolia's L1StandardBridge, deployed on Sepolia. Verified on-chain:
+// OTHER_BRIDGE() of the L2StandardBridge (0x4200…0010) on Base Sepolia returns this address, and vice versa.
 const BASE_L1_BRIDGE = "0xfd0Bf71F60660E2f608ed56e1659C450eB113120";
 
 const opts = { cacheTimeout: -1 };
@@ -27,10 +27,10 @@ async function balances() {
 async function send(provider, label, value) {
   const wallet = new Wallet(deployerKey, provider);
   if ((await provider.getBalance(wallet.address)) < parseEther(value)) {
-    throw new Error(`${label} : solde du deployer insuffisant pour envoyer ${value} ETH (dépôt pas encore arrivé ?)`);
+    throw new Error(`${label}: deployer balance too low to send ${value} ETH (deposit not arrived yet?)`);
   }
   const tx = await wallet.sendTransaction({ to: relayerAddress, value: parseEther(value) });
-  console.log(`${label} : ${value} ETH → relayer (${tx.hash})`);
+  console.log(`${label}: ${value} ETH → relayer (${tx.hash})`);
   await tx.wait();
 }
 
@@ -40,13 +40,13 @@ async function main() {
     await send(sepolia, "Sepolia", "0.01");
     const bridge = new Contract(BASE_L1_BRIDGE, ["function depositETH(uint32, bytes) payable"], new Wallet(deployerKey, sepolia));
     const tx = await bridge.depositETH(200_000, "0x", { value: parseEther("0.02") });
-    console.log(`Sepolia → Base Sepolia : dépôt de 0.02 ETH (${tx.hash})`);
+    console.log(`Sepolia → Base Sepolia: 0.02 ETH deposit (${tx.hash})`);
     await tx.wait();
-    console.log("Dépôt confirmé sur Sepolia ; arrivée sur Base Sepolia dans 1 à 5 minutes.");
+    console.log("Deposit confirmed on Sepolia; it lands on Base Sepolia within 1 to 5 minutes.");
   } else if (mode === "base") {
     await send(base, "Base Sepolia", "0.008");
   } else if (mode) {
-    throw new Error(`mode inconnu : ${mode} (sepolia | base)`);
+    throw new Error(`unknown mode: ${mode} (sepolia | base)`);
   }
   await balances();
 }

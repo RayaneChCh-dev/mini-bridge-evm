@@ -1,8 +1,8 @@
-// Lance un transfert de BRT d'une chaîne à l'autre (appel de bridgeOut depuis le wallet deployer).
-// Usage : node scripts/bridge.js <sepolia|baseSepolia> <montant> [destinataire]
-//   node scripts/bridge.js sepolia 10            → 10 BRT de Sepolia vers Base Sepolia, au deployer
-//   node scripts/bridge.js baseSepolia 4 0xabc…  → 4 BRT de Base Sepolia vers Sepolia, à 0xabc…
-//   node scripts/bridge.js                       → soldes BRT sur les deux chaînes
+// Starts a BRT transfer from one chain to the other (calls bridgeOut from the deployer wallet).
+// Usage: node scripts/bridge.js <sepolia|baseSepolia> <amount> [recipient]
+//   node scripts/bridge.js sepolia 10            → 10 BRT from Sepolia to Base Sepolia, to the deployer
+//   node scripts/bridge.js baseSepolia 4 0xabc…  → 4 BRT from Base Sepolia to Sepolia, to 0xabc…
+//   node scripts/bridge.js                       → BRT balances on both chains
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
@@ -22,7 +22,7 @@ const NETWORKS = {
 
 function load(network) {
   const file = path.join(__dirname, "..", "deployments", `${network}.json`);
-  if (!fs.existsSync(file)) throw new Error(`${network} non déployé (deployments/${network}.json manquant)`);
+  if (!fs.existsSync(file)) throw new Error(`${network} not deployed (deployments/${network}.json missing)`);
   const d = JSON.parse(fs.readFileSync(file, "utf8"));
   const provider = new JsonRpcProvider(NETWORKS[network].rpc, d.chainId, { staticNetwork: true, cacheTimeout: -1 });
   const wallet = new Wallet(process.env.DEPLOYER_PRIVATE_KEY, provider);
@@ -37,18 +37,18 @@ async function main() {
   const holder = recipientArg || chains[0].wallet.address;
 
   if (from) {
-    if (!NETWORKS[from]) throw new Error(`chaîne inconnue : ${from} (sepolia | baseSepolia)`);
-    if (!amount) throw new Error("montant manquant");
-    if (recipientArg && !isAddress(recipientArg)) throw new Error(`adresse invalide : ${recipientArg}`);
+    if (!NETWORKS[from]) throw new Error(`unknown chain: ${from} (sepolia | baseSepolia)`);
+    if (!amount) throw new Error("missing amount");
+    if (recipientArg && !isAddress(recipientArg)) throw new Error(`invalid address: ${recipientArg}`);
     const src = chains.find((c) => c.network === from);
     const dest = chains.find((c) => c.network !== from);
 
     const tx = await src.token.bridgeOut(parseEther(amount), dest.chainId, holder);
-    console.log(`bridgeOut ${amount} BRT ${src.network} → ${dest.network} pour ${holder}`);
+    console.log(`bridgeOut ${amount} BRT ${src.network} → ${dest.network} for ${holder}`);
     console.log(`  ${src.explorer}/tx/${tx.hash}`);
     const receipt = await tx.wait();
     const event = receipt.logs.map((l) => src.token.interface.parseLog(l)).find((e) => e?.name === "BridgedOut");
-    console.log(`  confirmé au bloc ${receipt.blockNumber}, nonce ${event.args.nonce} — le relayer mintera après ses confirmations`);
+    console.log(`  confirmed in block ${receipt.blockNumber}, nonce ${event.args.nonce} — the relayer will mint after its confirmations`);
   }
 
   for (const c of chains) {

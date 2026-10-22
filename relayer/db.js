@@ -1,10 +1,10 @@
 const Database = require("better-sqlite3");
 
-// Statuts d'une opération :
-//   pending   : burn confirmé sur la chaîne source, mint pas encore envoyé
-//   submitted : transaction bridgeIn envoyée, pas encore confirmée
-//   confirmed : mint constaté sur la chaîne destination
-//   failed    : abandon après MAX_ATTEMPTS échecs (à traiter à la main)
+// Operation statuses:
+//   pending   : burn confirmed on the source chain, mint not sent yet
+//   submitted : bridgeIn transaction sent, not confirmed yet
+//   confirmed : mint observed on the destination chain
+//   failed    : given up after MAX_ATTEMPTS failures (to be handled manually)
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS bridge_operations (
   source_chain_id INTEGER NOT NULL,
@@ -58,8 +58,8 @@ function openDb(file) {
   return {
     raw: db,
     getCursor: (chainId) => stmts.getCursor.get(chainId)?.last_block,
-    // Les opérations d'une plage de blocs et le curseur sont écrits ensemble :
-    // un crash ne peut pas avancer le curseur sans avoir enregistré les events correspondants.
+    // A block range's operations and the cursor are written together:
+    // a crash cannot move the cursor forward without the matching events being recorded.
     recordRange: db.transaction((chainId, toBlock, ops) => {
       for (const op of ops) stmts.insertOp.run(op);
       stmts.setCursor.run(chainId, toBlock);
