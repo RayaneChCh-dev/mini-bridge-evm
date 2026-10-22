@@ -73,9 +73,9 @@ Tests unitaires Hardhat/Chai : mint/burn normal, tentative de rejeu d'un même `
 
 Service Node.js (`ethers.js`) tournant en continu, avec quatre responsabilités :
 
-1. **Écoute** : souscription aux events `BridgedOut` sur la chaîne source (WebSocket), avec un polling `getLogs` régulier en secours
-2. **Rattrapage** : le relayer enregistre en base le **dernier bloc traité** pour chaque chaîne. Au démarrage, il relit avec `getLogs` tous les blocs depuis ce point, pour récupérer les events émis pendant qu'il était arrêté (une souscription WebSocket ne renvoie pas l'historique)
-3. **Confirmation** : attente d'un nombre fixe de blocs (ex. 5-10) avant de considérer l'event comme définitif
+1. **Écoute** : polling régulier (`getLogs`) des events `BridgedOut` sur chaque chaîne, par plages de blocs limitées (les RPC publics plafonnent la taille des requêtes). Le polling a été préféré à une souscription WebSocket : les RPC publics gratuits ne proposent pas toujours de WebSocket, et un seul chemin de code sert à la fois au suivi en direct et au rattrapage
+2. **Rattrapage** : le relayer enregistre en base le **dernier bloc traité** pour chaque chaîne, dans la même transaction SQLite que les opérations lues. Au redémarrage, il reprend depuis ce point et récupère les events émis pendant qu'il était arrêté
+3. **Confirmation** : seuls les blocs ayant au moins N confirmations (ex. 5-10) sont lus, si bien qu'un event n'est jamais traité avant d'être considéré comme définitif
 4. **Action** : appel de `bridgeIn` sur la chaîne destination avec la clé du relayer, puis mise à jour du statut en base locale
 
 État persisté dans une base SQLite :

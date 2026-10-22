@@ -20,8 +20,8 @@ La spécification complète (architecture, sécurité, risques) est dans [`docs/
 | --- | --- |
 | 1. Setup (repo, Hardhat, wallets) | ✅ |
 | 2. Smart contract `BridgeToken` + tests | ✅ contrat et tests ; déploiement testnet en attente des faucets |
-| 3. Relayer v1 | ⏳ |
-| 4. Robustesse (SQLite, rattrapage, reprise) | ⏳ |
+| 3. Relayer v1 | ✅ testé en local sur deux nœuds Hardhat |
+| 4. Robustesse (SQLite, rattrapage, reprise) | ✅ en local ; à valider sur les testnets |
 | 5. Démo & doc | ⏳ |
 
 ## Structure
@@ -31,7 +31,10 @@ contracts/BridgeToken.sol    ERC20 + bridgeOut / bridgeIn / contrôle d'accès
 test/BridgeToken.test.js     tests unitaires (Hardhat + Chai)
 scripts/generate-wallets.js  génère les wallets deployer et relayer dans .env
 scripts/deploy.js            déploie et écrit deployments/<réseau>.json
-relayer/                     service relayer (étape 3)
+relayer/relayer.js           boucle du relayer : scan des BridgedOut, puis bridgeIn
+relayer/db.js                base SQLite (opérations + curseur de bloc par chaîne)
+relayer/index.js             point d'entrée (lit deployments/*.json et .env)
+relayer/test/                test d'intégration sur deux nœuds Hardhat locaux
 docs/SPEC.md                 document de conception
 ```
 
@@ -40,6 +43,7 @@ docs/SPEC.md                 document de conception
 ```bash
 npm install
 npm test                 # tests du contrat
+npm run test:relayer     # test d'intégration du relayer (deux chaînes locales, ~5 s)
 npm run wallets          # crée .env avec deux wallets dédiés (affiche uniquement les adresses)
 ```
 
@@ -49,6 +53,32 @@ Alimenter les deux adresses affichées en ETH de test sur Sepolia et Base Sepoli
 npm run deploy:sepolia        # chaîne d'origine : 1 000 000 BRT mintés à l'owner
 npm run deploy:base-sepolia   # chaîne secondaire : supply 0, les tokens n'arrivent que via bridgeIn
 ```
+
+Puis lancer le relayer :
+
+```bash
+npm run relayer          # tourne en continu (Ctrl+C pour l'arrêter)
+npm run relayer:status   # historique des opérations en base
+```
+
+Variables optionnelles : `CONFIRMATIONS` (défaut 5), `POLL_INTERVAL_MS` (12000), `MAX_BLOCK_RANGE` (500), `RELAYER_DB`.
+
+## Relayer
+
+À chaque tick, pour chaque chaîne :
+
+1. **scan** : lit les `BridgedOut` entre le dernier bloc traité et `tête − N confirmations`, les enregistre en base et avance le curseur dans la même transaction SQLite ;
+2. **process** : pour chaque opération ouverte, vérifie `isProcessed` sur la chaîne destination, puis appelle `bridgeIn` si besoin.
+
+Statuts : `pending` → `submitted` → `confirmed` (ou `failed` après 5 échecs).
+
+Le test d'intégration (`relayer/test/integration.test.js`) couvre :
+
+- un transfert A → B qui n'est minté qu'après N confirmations ;
+- le retour B → A, avec la supply totale conservée ;
+- un redémarrage avec rattrapage des burns émis pendant l'arrêt, sans double mint ;
+- un crash après l'envoi du mint mais avant l'écriture en base : pas de double mint ;
+- un revert `AlreadyProcessed` traité comme un succès.
 
 ## Contrat
 

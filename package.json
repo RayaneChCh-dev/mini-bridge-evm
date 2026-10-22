@@ -7,12 +7,17 @@
     "test": "hardhat test",
     "wallets": "node scripts/generate-wallets.js",
     "deploy:sepolia": "INITIAL_SUPPLY=1000000 PEER_CHAIN_IDS=84532 hardhat run scripts/deploy.js --network sepolia",
-    "deploy:base-sepolia": "PEER_CHAIN_IDS=11155111 hardhat run scripts/deploy.js --network baseSepolia"
+    "deploy:base-sepolia": "PEER_CHAIN_IDS=11155111 hardhat run scripts/deploy.js --network baseSepolia",
+    "test:relayer": "hardhat compile --quiet && node --test relayer/test/*.test.js",
+    "relayer": "node relayer/index.js",
+    "relayer:status": "node relayer/index.js --status"
   },
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
-    "@openzeppelin/contracts": "^5.1.0"
+    "@openzeppelin/contracts": "^5.1.0",
+    "better-sqlite3": "^11.7.0",
+    "ethers": "^6.17.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
