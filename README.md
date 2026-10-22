@@ -1,3 +1,24 @@
+<p align="center">
+  <img src="docs/banner.jpg" alt="Mini-Bridge EVM: mint & burn ERC20 bridge between Sepolia and Base Sepolia" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/RayaneChCh-dev/mini-bridge-evm/actions/workflows/ci.yml"><img src="https://github.com/RayaneChCh-dev/mini-bridge-evm/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22D3EE" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity" alt="Solidity 0.8.24">
+  <img src="https://img.shields.io/badge/OpenZeppelin-5-4E5EE4?logo=openzeppelin&logoColor=white" alt="OpenZeppelin 5">
+  <img src="https://img.shields.io/badge/Hardhat-2.29-FFF100?labelColor=363636" alt="Hardhat">
+  <img src="https://img.shields.io/badge/ethers.js-v6-2535A0?logo=ethers&logoColor=white" alt="ethers.js v6">
+  <img src="https://img.shields.io/badge/Node.js-22-339933?logo=nodedotjs&logoColor=white" alt="Node.js 22">
+  <img src="https://img.shields.io/badge/SQLite-relayer%20state-003B57?logo=sqlite&logoColor=white" alt="SQLite">
+</p>
+
+<p align="center">
+  <a href="https://sepolia.etherscan.io/address/0xfC726086E18893840c68ab5aBc11a8Fd0AC38c36"><img src="https://img.shields.io/badge/Sepolia-deployed-3D7BFF?logo=ethereum&logoColor=white" alt="Deployed on Sepolia"></a>
+  <a href="https://sepolia.basescan.org/address/0x6e75b742ab49219ECECf4aD0c8aBF1428b93b60b"><img src="https://img.shields.io/badge/Base%20Sepolia-deployed-8B5CF6?logo=coinbase&logoColor=white" alt="Deployed on Base Sepolia"></a>
+  <a href="#on-chain-proof"><img src="https://img.shields.io/badge/real%20transfers-3%20%C2%B7%200%20double%20mint-22D3EE" alt="3 real transfers, 0 double mint"></a>
+</p>
+
 # Mini-Bridge EVM
 
 A **mint & burn** bridge for an ERC20 token (`BRT`) between two public EVM testnets, **Sepolia** and **Base Sepolia**, in both directions.
@@ -159,6 +180,8 @@ scripts/                          wallets, funding, deployment, transfers
 deployments/                      addresses and deployment blocks per network
 docs/SPEC.md                      design document
 docs/demo/                        explainer video
+docs/banner.jpg                   README banner (Higgsfield, Nano Banana Pro)
+.github/workflows/ci.yml          CI: contract + relayer tests on every push
 ```
 
 ## Tests
