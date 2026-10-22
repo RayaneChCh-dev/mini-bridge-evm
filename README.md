@@ -21,6 +21,12 @@ flowchart LR
 
 Relayer : [`0x7Bb2F6363807a3daf266E7E824cC17Ba3526DEF9`](https://sepolia.etherscan.io/address/0x7Bb2F6363807a3daf266E7E824cC17Ba3526DEF9) · Owner : `0xfb068f29Bb99A76a03Db9E4F3f23628E203dAf6f`
 
+### Transferts vérifiables
+
+| # | Sens | Montant | Burn (source) | Mint (destination) | Délai |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Sepolia → Base Sepolia | 10 BRT | [`0x5559…57d7`](https://sepolia.etherscan.io/tx/0x5559808b5f022c2c8bcfe1cd75c9d15ae194952c7372fe79fe72f9a8896557d7) | [`0x4710…b3d4`](https://sepolia.basescan.org/tx/0x471010818c2f95e26c0726dd4026fd989be7636294a4fcaec1bb879cb543b3d4) | 64 s |
+
 La spécification complète (architecture, sécurité, risques) est dans [`docs/SPEC.md`](docs/SPEC.md).
 
 ## État d'avancement
