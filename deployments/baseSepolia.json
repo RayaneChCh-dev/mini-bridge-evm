@@ -1,0 +1,13 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "address": "0x6e75b742ab49219ECECf4aD0c8aBF1428b93b60b",
+  "relayer": "0x7Bb2F6363807a3daf266E7E824cC17Ba3526DEF9",
+  "owner": "0xfb068f29Bb99A76a03Db9E4F3f23628E203dAf6f",
+  "initialSupply": "0",
+  "peers": [
+    11155111
+  ],
+  "deployBlock": 48919381,
+  "txHash": "0xd7da310969b10b3eb5a069810e12d738915e5d62542a22aefe6f9bed59a09487"
+}

@@ -12,6 +12,15 @@ flowchart LR
   R2 --> B["Contrat Chaîne B<br/>vérifie (chaîne source, nonce) + mint"]
 ```
 
+## Déploiements
+
+| Chaîne | Contrat `BridgeToken` | Supply initiale |
+| --- | --- | --- |
+| Sepolia (11155111) | [`0xfC726086E18893840c68ab5aBc11a8Fd0AC38c36`](https://sepolia.etherscan.io/address/0xfC726086E18893840c68ab5aBc11a8Fd0AC38c36) | 1 000 000 BRT |
+| Base Sepolia (84532) | [`0x6e75b742ab49219ECECf4aD0c8aBF1428b93b60b`](https://sepolia.basescan.org/address/0x6e75b742ab49219ECECf4aD0c8aBF1428b93b60b) | 0 (mint via bridge uniquement) |
+
+Relayer : [`0x7Bb2F6363807a3daf266E7E824cC17Ba3526DEF9`](https://sepolia.etherscan.io/address/0x7Bb2F6363807a3daf266E7E824cC17Ba3526DEF9) · Owner : `0xfb068f29Bb99A76a03Db9E4F3f23628E203dAf6f`
+
 La spécification complète (architecture, sécurité, risques) est dans [`docs/SPEC.md`](docs/SPEC.md).
 
 ## État d'avancement
@@ -19,7 +28,7 @@ La spécification complète (architecture, sécurité, risques) est dans [`docs/
 | Étape | Statut |
 | --- | --- |
 | 1. Setup (repo, Hardhat, wallets) | ✅ |
-| 2. Smart contract `BridgeToken` + tests | ✅ contrat et tests ; déploiement testnet en attente des faucets |
+| 2. Smart contract `BridgeToken` + tests | ✅ déployé sur Sepolia et Base Sepolia |
 | 3. Relayer v1 | ✅ testé en local sur deux nœuds Hardhat |
 | 4. Robustesse (SQLite, rattrapage, reprise) | ✅ en local ; à valider sur les testnets |
 | 5. Démo & doc | ⏳ |
