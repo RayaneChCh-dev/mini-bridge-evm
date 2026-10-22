@@ -8,7 +8,7 @@ Trois transferts réels ont été faits sur les testnets (détail [plus bas](#pr
 
 ## Le projet en 1 minute
 
-[![Vidéo : le mini-bridge expliqué en 1 minute](docs/demo/poster.jpg)](https://github.com/RayaneChCh-dev/mini-bridge-evm/raw/main/docs/demo/mini-bridge-explainer.mp4)
+[![Vidéo : le mini-bridge expliqué en 1 minute](docs/demo/poster.jpg)](https://cdn.jsdelivr.net/gh/RayaneChCh-dev/mini-bridge-evm@f34a5483aa79cc7172daea355bf98b4e56cf0421/docs/demo/mini-bridge-explainer.mp4)
 
 *Cliquer sur l'image pour lancer la vidéo (1 min, en anglais, sous-titrée).*
 

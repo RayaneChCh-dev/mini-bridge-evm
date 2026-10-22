@@ -7,3 +7,5 @@ coverage.json
 typechain-types/
 deployments/*.local.json
 relayer/*.sqlite
+relayer/*.sqlite-shm
+relayer/*.sqlite-wal
