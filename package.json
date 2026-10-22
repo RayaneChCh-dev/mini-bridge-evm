@@ -1,0 +1,23 @@
+{
+  "name": "mini-bridge-evm",
+  "version": "1.0.0",
+  "description": "Mini-bridge mint & burn d'un ERC20 entre deux testnets EVM (Sepolia ↔ Base Sepolia)",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "wallets": "node scripts/generate-wallets.js",
+    "deploy:sepolia": "INITIAL_SUPPLY=1000000 PEER_CHAIN_IDS=84532 hardhat run scripts/deploy.js --network sepolia",
+    "deploy:base-sepolia": "PEER_CHAIN_IDS=11155111 hardhat run scripts/deploy.js --network baseSepolia"
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.1.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.29.1"
+  },
+  "private": true
+}
