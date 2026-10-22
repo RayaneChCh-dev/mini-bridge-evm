@@ -47,7 +47,15 @@ npm run test:relayer     # test d'intégration du relayer (deux chaînes locales
 npm run wallets          # crée .env avec deux wallets dédiés (affiche uniquement les adresses)
 ```
 
-Alimenter les deux adresses affichées en ETH de test sur Sepolia et Base Sepolia, puis :
+Alimenter le deployer en ETH de test sur Sepolia (faucet), puis répartir avec `scripts/fund.js` :
+
+```bash
+node scripts/fund.js sepolia  # 0.01 ETH → relayer sur Sepolia + 0.02 ETH vers Base Sepolia (bridge officiel)
+node scripts/fund.js base     # une fois l'ETH arrivé : 0.008 ETH → relayer sur Base Sepolia
+npm run balances              # soldes des deux wallets sur les deux chaînes
+```
+
+Ensuite :
 
 ```bash
 npm run deploy:sepolia        # chaîne d'origine : 1 000 000 BRT mintés à l'owner

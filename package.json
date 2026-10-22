@@ -10,7 +10,8 @@
     "deploy:base-sepolia": "PEER_CHAIN_IDS=11155111 hardhat run scripts/deploy.js --network baseSepolia",
     "test:relayer": "hardhat compile --quiet && node --test relayer/test/*.test.js",
     "relayer": "node relayer/index.js",
-    "relayer:status": "node relayer/index.js --status"
+    "relayer:status": "node relayer/index.js --status",
+    "balances": "node scripts/fund.js"
   },
   "license": "MIT",
   "type": "commonjs",
