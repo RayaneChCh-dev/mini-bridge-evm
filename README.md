@@ -78,7 +78,7 @@ npm run relayer          # tourne en continu (Ctrl+C pour l'arrêter)
 npm run relayer:status   # historique des opérations en base
 ```
 
-Variables optionnelles : `CONFIRMATIONS` (défaut 5), `POLL_INTERVAL_MS` (12000), `MAX_BLOCK_RANGE` (500), `RELAYER_DB`.
+Variables optionnelles : `CONFIRMATIONS` (défaut 5), `POLL_INTERVAL_MS` (12000), `MAX_BLOCK_RANGE` (200, limite du RPC public de Base), `RELAYER_DB`.
 
 ## Relayer
 

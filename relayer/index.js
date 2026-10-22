@@ -61,7 +61,7 @@ const relayer = new Relayer({
   relayerKey: process.env.RELAYER_PRIVATE_KEY,
   confirmations: Number(process.env.CONFIRMATIONS || 5),
   pollIntervalMs: Number(process.env.POLL_INTERVAL_MS || 12_000),
-  maxBlockRange: Number(process.env.MAX_BLOCK_RANGE || 500),
+  maxBlockRange: Number(process.env.MAX_BLOCK_RANGE || 200),
 });
 
 for (const sig of ["SIGINT", "SIGTERM"]) {

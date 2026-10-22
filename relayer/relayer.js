@@ -20,12 +20,12 @@ class Relayer {
    * @param {string} opts.relayerKey   clé privée du relayer
    * @param {ReturnType<import("./db").openDb>} opts.db
    * @param {number} [opts.confirmations]
-   * @param {number} [opts.maxBlockRange]  taille max d'une requête getLogs (les RPC publics la limitent)
+   * @param {number} [opts.maxBlockRange]  taille max d'une requête getLogs (sepolia.base.org la limite à 200 blocs)
    * @param {number} [opts.maxAttempts]
    * @param {number} [opts.pollIntervalMs]
    * @param {{info: Function, warn: Function, error: Function}} [opts.logger]
    */
-  constructor({ chains, relayerKey, db, confirmations = 5, maxBlockRange = 500, maxAttempts = 5, pollIntervalMs = 12_000, logger = console }) {
+  constructor({ chains, relayerKey, db, confirmations = 5, maxBlockRange = 200, maxAttempts = 5, pollIntervalMs = 12_000, logger = console }) {
     this.db = db;
     this.confirmations = confirmations;
     this.maxBlockRange = maxBlockRange;
@@ -52,7 +52,7 @@ class Relayer {
       try {
         await this.tick();
       } catch (err) {
-        this.log.error(`Erreur pendant le tick : ${err.shortMessage || err.message}`);
+        this.log.error(`Erreur pendant le tick : ${describe(err)}`);
       }
       if (this.running) await new Promise((r) => (this.timer = setTimeout(r, this.pollIntervalMs)));
     }
@@ -133,11 +133,25 @@ class Relayer {
       }
       const attempts = op.attempts + 1;
       const status = attempts >= this.maxAttempts ? "failed" : "pending";
-      const message = err.shortMessage || err.message;
+      const message = describe(err);
       this.db.updateOp(op, { status, attempts, lastError: message });
       this.log.warn(`${tag} : échec (tentative ${attempts}/${this.maxAttempts}) : ${message}`);
     }
   }
+}
+
+/** Message d'erreur lisible : les RPC cachent souvent la vraie cause dans le corps de la réponse. */
+function describe(err) {
+  const body = err?.info?.responseBody;
+  if (body) {
+    try {
+      const rpcMessage = JSON.parse(body).error?.message;
+      if (rpcMessage) return `${err.shortMessage} (${rpcMessage})`;
+    } catch {
+      /* corps non JSON */
+    }
+  }
+  return err?.shortMessage || err?.message || String(err);
 }
 
 function isAlreadyProcessed(err, contract) {
