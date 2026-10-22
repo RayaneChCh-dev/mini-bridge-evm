@@ -6,8 +6,17 @@ Les tokens sont brûlés sur la chaîne source. Un relayer off-chain attend que 
 
 Trois transferts réels ont été faits sur les testnets (détail [plus bas](#preuves-on-chain)), sans perte ni double mint.
 
+## Le projet en 1 minute
+
+[![Vidéo : le mini-bridge expliqué en 1 minute](docs/demo/poster.jpg)](https://github.com/RayaneChCh-dev/mini-bridge-evm/raw/main/docs/demo/mini-bridge-explainer.mp4)
+
+*Cliquer sur l'image pour lancer la vidéo (1 min, en anglais, sous-titrée).*
+
+Visuels générés avec Higgsfield (Nano Banana Pro pour la référence de style, Gemini Omni pour les séquences), voix ElevenLabs v4, musique « A Quiet Courtyard » d'Artur Aravidi.
+
 ## Sommaire
 
+- [Le projet en 1 minute](#le-projet-en-1-minute)
 - [Pourquoi ce projet](#pourquoi-ce-projet)
 - [Architecture](#architecture)
 - [Choix techniques](#choix-techniques)
