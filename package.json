@@ -12,7 +12,8 @@
     "relayer": "node relayer/index.js",
     "relayer:status": "node relayer/index.js --status",
     "balances": "node scripts/fund.js",
-    "bridge": "node scripts/bridge.js"
+    "bridge": "node scripts/bridge.js",
+    "trace": "node scripts/trace.js"
   },
   "license": "MIT",
   "type": "commonjs",

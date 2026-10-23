@@ -163,6 +163,7 @@ npm run relayer               # terminal 1: runs continuously (Ctrl+C to stop)
 npm run bridge -- sepolia 10  # terminal 2: 10 BRT from Sepolia to Base Sepolia
 npm run bridge                # BRT balances on both chains
 npm run relayer:status        # operation history from the database
+npm run trace -- <txHash>     # burn ↔ mint on both chains, explorer links, total supply (read-only)
 ```
 
 Optional relayer environment variables: `CONFIRMATIONS` (default 5), `POLL_INTERVAL_MS` (12000), `MAX_BLOCK_RANGE` (200, the limit of Base's public RPC), `RELAYER_DB`, `SEPOLIA_RPC_URL`, `BASE_SEPOLIA_RPC_URL`.
@@ -176,7 +177,7 @@ relayer/relayer.js                relayer loop: scan BridgedOut events, then bri
 relayer/db.js                     SQLite database (operations + block cursor per chain)
 relayer/index.js                  entry point (reads deployments/*.json and .env)
 relayer/test/integration.test.js  integration test on two local Hardhat nodes
-scripts/                          wallets, funding, deployment, transfers
+scripts/                          wallets, funding, deployment, transfers, tracing
 deployments/                      addresses and deployment blocks per network
 docs/SPEC.md                      design document
 docs/demo/                        explainer video
